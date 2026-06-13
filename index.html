@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Find Your Best Move</title>
+
+  <!-- Chessboard -->
+  <link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- App styles -->
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-left">
+      <div class="logo-mark">♟</div>
+      <span class="site-name">Find Your Best Move</span>
+      <span class="nav-sep"></span>
+      <span class="nav-sub">Stockfish + AI analysis</span>
+    </div>
+    <div class="nav-right">
+      <button class="chip active" id="chipAnalyse" onclick="setMode('analyse')">Analyse</button>
+      <button class="chip" id="chipHistory" onclick="setMode('history')">History</button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div class="layout">
+
+    <!-- LEFT: board + controls -->
+    <aside class="panel-left">
+
+      <div class="board-shell">
+        <div class="rank-labels" id="rankLabels">
+          <span>8</span><span>7</span><span>6</span><span>5</span>
+          <span>4</span><span>3</span><span>2</span><span>1</span>
+        </div>
+        <div id="board"></div>
+      </div>
+      <div class="file-labels">
+        <span>a</span><span>b</span><span>c</span>
+        <span>d</span><span>e</span><span>f</span>
+        <span>g</span><span>h</span>
+      </div>
+
+      <div class="turn-bar">
+        <div class="turn-pill" id="turnW">
+          <span class="turn-dot white"></span> White to move
+        </div>
+        <div class="turn-pill hidden" id="turnB">
+          <span class="turn-dot black"></span> Black to move
+        </div>
+      </div>
+
+      <div class="ctrl-group">
+        <div class="ctrl-row">
+          <button class="btn-ctrl" onclick="resetBoard()" title="Reset board">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>
+            </svg>
+            Reset
+          </button>
+          <button class="btn-ctrl" onclick="flipBoard()" title="Flip board">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m21 16-4 4-4-4"/><path d="M17 20V4"/>
+              <path d="m3 8 4-4 4 4"/><path d="M7 4v16"/>
+            </svg>
+            Flip
+          </button>
+          <button class="btn-ctrl" onclick="undoMove()" title="Undo last move">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>
+            </svg>
+            Undo
+          </button>
+        </div>
+
+        <div class="fen-row">
+          <input class="fen-input" id="fenInput"
+            value="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+            placeholder="Paste FEN…" />
+          <button class="btn-load" onclick="loadFEN()">Load</button>
+        </div>
+
+        <button class="btn-analyse" id="analyseBtn" onclick="analyse()">
+          <div class="spinner" id="spinner"></div>
+          <span id="btnLabel">Find Best Move</span>
+        </button>
+      </div>
+
+      <div class="status-bar" id="statusBar">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Set up a position and click Find Best Move</span>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT: results -->
+    <section class="panel-right" id="panelRight">
+
+      <!-- empty -->
+      <div class="empty" id="emptyState">
+        <div class="empty-board">
+          <div class="mini-grid">
+            <div class="mg-sq d"></div><div class="mg-sq l"></div><div class="mg-sq d"></div><div class="mg-sq l"></div>
+            <div class="mg-sq l"></div><div class="mg-sq d"></div><div class="mg-sq l"></div><div class="mg-sq d"></div>
+            <div class="mg-sq d"></div><div class="mg-sq l"></div><div class="mg-sq d"></div><div class="mg-sq l"></div>
+            <div class="mg-sq l"></div><div class="mg-sq d"></div><div class="mg-sq l"></div><div class="mg-sq d"></div>
+          </div>
+        </div>
+        <h2>No position analysed</h2>
+        <p>Drag pieces to build a position, or paste a FEN string. Then click <strong>Find Best Move</strong>.</p>
+      </div>
+
+      <!-- best move card -->
+      <div class="result-card hidden" id="moveCard">
+        <div class="rc-head">
+          <div class="rc-head-left">
+            <div class="rc-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </div>
+            <div>
+              <div class="rc-title">Best Move</div>
+              <div class="rc-sub">Stockfish recommendation</div>
+            </div>
+          </div>
+          <span class="rc-tag">Engine</span>
+        </div>
+        <div class="rc-body">
+          <div class="move-display">
+            <div class="move-token" id="moveToken">—</div>
+            <div class="move-meta">
+              <div class="meta-row"><span class="meta-key">From</span><span class="meta-val" id="mFrom">—</span></div>
+              <div class="meta-row"><span class="meta-key">To</span><span class="meta-val" id="mTo">—</span></div>
+              <div class="meta-row"><span class="meta-key">Notation</span><span class="meta-val mono" id="mSAN">—</span></div>
+            </div>
+          </div>
+          <div class="eval-block">
+            <div class="eval-labels">
+              <span>Position strength</span>
+              <span id="evalLabel">—</span>
+            </div>
+            <div class="eval-track">
+              <div class="eval-fill" id="evalFill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- explanation card -->
+      <div class="result-card hidden" id="explainCard">
+        <div class="rc-head">
+          <div class="rc-head-left">
+            <div class="rc-icon purple">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+              </svg>
+            </div>
+            <div>
+              <div class="rc-title">Why this move?</div>
+              <div class="rc-sub">Plain English explanation</div>
+            </div>
+          </div>
+          <span class="rc-tag">AI</span>
+        </div>
+        <div class="rc-body">
+          <p class="explain-text" id="explainText">—</p>
+        </div>
+      </div>
+
+      <!-- history card -->
+      <div class="result-card hidden" id="historyCard">
+        <div class="rc-head">
+          <div class="rc-head-left">
+            <div class="rc-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div>
+              <div class="rc-title">Move History</div>
+              <div class="rc-sub">Moves played this session</div>
+            </div>
+          </div>
+        </div>
+        <div class="rc-body">
+          <div class="history-grid" id="historyGrid">
+            <span class="no-moves">No moves yet.</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

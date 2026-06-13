@@ -1,0 +1,4 @@
+stockfish-macos-m1-apple-silicon
+venv/
+.DS_Store
+.env
